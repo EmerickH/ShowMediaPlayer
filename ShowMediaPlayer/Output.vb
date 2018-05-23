@@ -1,4 +1,6 @@
-﻿Public Class Output
+﻿Imports System.IO
+Imports Vlc.DotNet.Core
+Public Class Output
 
 #Region "Output visibility"
     Private Sub Output_VisibleChanged(sender As Object, e As EventArgs) Handles MyBase.VisibleChanged
@@ -16,6 +18,10 @@
     Private Sub Output_FormClosing(sender As Object, e As FormClosingEventArgs) Handles MyBase.FormClosing
         Main.ShowOutputCheck.Checked = False
         e.Cancel = True
+    End Sub
+
+    Private Sub VLC_VlcLibDirectoryNeeded(sender As Object, e As Vlc.DotNet.Forms.VlcLibDirectoryNeededEventArgs) Handles VLC.VlcLibDirectoryNeeded
+        Me.VLC.VlcLibDirectory = New DirectoryInfo(Path.Combine(Application.StartupPath, "libvlc\win-x64"))
     End Sub
 
 #End Region

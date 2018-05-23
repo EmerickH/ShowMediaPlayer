@@ -1,11 +1,14 @@
-﻿Imports System.IO
+﻿Imports System.ComponentModel
+Imports System.IO
 Imports MetroFramework
 Imports ShowMediaPlayer.MetroAdditions
 Imports ShowMediaPlayer.ShowMedia
+Imports Vlc.DotNet.Core
 
 Public Class Main
 
-    Private manager As MediaManager
+    Friend WithEvents playmanager As PlaylistManager
+    Friend WithEvents nodemanager As TreenodeManager
 
     Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         Me.StyleManager = msmMain
@@ -13,8 +16,11 @@ Public Class Main
 
         TreeViewOptions.Renderer = New MetroStripRenderer
 
-        manager = New MediaManager(MediaTreeView, MediaList, MediaNameLabel, Output.VLC)
-        AddHandler manager.node.OnChanges, AddressOf changes
+        Dim test As New Controls.MetroLabel
+
+        playmanager = New PlaylistManager(MediaTreeView, MediaList, MediaNameLabel, Output.VLC, Me)
+        nodemanager = New TreenodeManager(MediaTreeView)
+        AddHandler nodemanager.OnChanges, AddressOf changes
 
         OutputChoice.Items.Add("Windowed")
         For Each sc In Screen.AllScreens
@@ -26,16 +32,52 @@ Public Class Main
         Output.Visible = False
     End Sub
 
+#Region "VLC managers events"
+
+    Function timetostring(time As TimeSpan) As String
+        Return time.Hours.ToString("D2") & ":" & time.Minutes.ToString("D2") & ":" & time.Seconds.ToString("D2")
+    End Function
+
+    Friend WithEvents nextbw As New BackgroundWorker()
+
+    Private Sub TimeChanged(sender As Object, e As TimeChangedEventArgs) Handles playmanager.TimeChanged
+        SeekTrackBar.Maximum = e.lenght.TotalMilliseconds
+        SeekTrackBar.Value = Math.Min(e.actual.TotalMilliseconds, e.lenght.TotalMilliseconds)
+        TimeLabel.Text = timetostring(e.actual) & "/" & timetostring(e.lenght)
+
+        If e.actual.TotalSeconds >= e.lenght.TotalSeconds - 1 And Not nextbw.IsBusy Then
+            nextbw.RunWorkerAsync()
+        End If
+    End Sub
+
+    Private Sub nextbw_DoWork(sender As Object, e As DoWorkEventArgs) Handles nextbw.DoWork
+        Threading.Thread.Sleep(2000)
+    End Sub
+
+    Private Sub nextbw_RunWorkerCompleted(sender As Object, e As RunWorkerCompletedEventArgs) Handles nextbw.RunWorkerCompleted
+        MediaList.SelectedIndex += 1
+    End Sub
+
+    Private Sub PauseChanged(sender As Object, e As Boolean) Handles playmanager.PauseChanged
+        If e Then
+            PlayButton.Text = "Pause"
+        Else
+            PlayButton.Text = "Play"
+        End If
+    End Sub
+
+#End Region
+
 #Region "Drag/Drop Treeview"
-    Private Sub TreeView1_ItemDrag(sender As Object, e As ItemDragEventArgs) Handles MediaTreeView.ItemDrag
+    Private Sub MediaTreeView_ItemDrag(sender As Object, e As ItemDragEventArgs) Handles MediaTreeView.ItemDrag
         DoDragDrop(e.Item, DragDropEffects.Move)
     End Sub
 
-    Private Sub TreeView1_DragEnter(sender As Object, e As DragEventArgs) Handles MediaTreeView.DragEnter
+    Private Sub MediaTreeView_DragEnter(sender As Object, e As DragEventArgs) Handles MediaTreeView.DragEnter
         e.Effect = DragDropEffects.Move
     End Sub
 
-    Private Sub TreeView1_DragDrop(sender As Object, e As DragEventArgs) Handles MediaTreeView.DragDrop
+    Private Sub MediaTreeView_DragDrop(sender As Object, e As DragEventArgs) Handles MediaTreeView.DragDrop
         Dim targetPoint As Point = MediaTreeView.PointToClient(New Point(e.X, e.Y))
         Dim targetNode As TreeNode = MediaTreeView.GetNodeAt(targetPoint)
 
@@ -59,7 +101,7 @@ Public Class Main
         End If
     End Sub
 
-    Private Sub TreeView1_MouseDown(ByVal sender As Object, ByVal e As MouseEventArgs) Handles MediaTreeView.MouseDown
+    Private Sub MediaTreeView_MouseDown(ByVal sender As Object, ByVal e As MouseEventArgs) Handles MediaTreeView.MouseDown
         If e.Button = MouseButtons.Right Then
             Dim node_here As TreeNode = MediaTreeView.GetNodeAt(e.X,
                 e.Y)
@@ -75,10 +117,10 @@ Public Class Main
 
 #Region "Buttons"
     Private Sub Button1_Click(sender As Object, e As EventArgs) Handles PlayButton.Click
-        If Output.VLC.input.state = 3 Then
-            Output.VLC.playlist.pause()
+        If Output.VLC.VlcMediaPlayer.State = 3 Then
+            Output.VLC.Pause()
         Else
-            Output.VLC.playlist.play()
+            Output.VLC.Play()
         End If
     End Sub
 
@@ -107,16 +149,17 @@ Public Class Main
     End Sub
 
     Private Sub MetroTrackBar1_Click(sender As Object, e As EventArgs) Handles SeekTrackBar.Click
-        Output.VLC.input.time = SeekTrackBar.Value
-        manager.playlist.seeking = SeekTrackBar.Value
+        Output.VLC.Time = SeekTrackBar.Value
+        'manager.playlist.seeking = SeekTrackBar.Value
     End Sub
 
     Private Sub ToolStripButton1_Click(sender As Object, e As EventArgs) Handles Remove.Click
-        manager.node.Remove()
+        nodemanager.Remove()
     End Sub
 
     Private Sub ClearButton_Click(sender As Object, e As EventArgs) Handles ClearButton.Click
-        manager.playlist.Clear()
+        playmanager.Clear()
+        MediaNameLabel.Text = "No media"
     End Sub
 
     Private Sub AddPauseButton_Click(sender As Object, e As EventArgs) Handles AddPauseButton.Click
@@ -129,23 +172,22 @@ Public Class Main
         About.ShowDialog()
     End Sub
 
-    Private Sub ListBox1_Click(sender As Object, e As MouseEventArgs) Handles MediaList.MouseDown
-        If e.Button = MouseButtons.Left Then
-            Dim Index As Integer = MediaList.IndexFromPoint(e.Location)
-            If (Not Index = ListBox.NoMatches) Then
-                Output.VLC.playlist.playItem(Index)
-            End If
-        End If
+    Private Sub MediaList_Click(sender As Object, e As EventArgs) Handles MediaList.SelectedIndexChanged
+        playmanager.Play(MediaList.SelectedIndex)
     End Sub
 
     Private Sub AddToPlay_Click(sender As Object, e As EventArgs) Handles AddToPlay.Click
-        manager.playlist.AddNodes()
+        playmanager.AddNodes()
     End Sub
 
     Private Sub TreeNode_DoubleClick(sender As Object, e As TreeNodeMouseClickEventArgs) Handles MediaTreeView.NodeMouseDoubleClick
-        manager.playlist.Clear()
-        manager.playlist.AddNodes(e.Node)
+        playmanager.Clear()
+        playmanager.AddNodes(e.Node)
         MediaNameLabel.Text = e.Node.Text
+    End Sub
+
+    Private Sub MidiChoice_SelectedIndexChanged(sender As Object, e As EventArgs) Handles MidiButton.Click
+        playmanager.ConnectMidi()
     End Sub
 #End Region
 
@@ -157,9 +199,9 @@ Public Class Main
     Private Sub MediaTreeView_AfterCheck(sender As Object, e As TreeViewEventArgs) Handles MediaTreeView.AfterCheck
         If e.Node.GetMedia.Type = MediaType.folder Then
             If e.Node.Checked Then
-                manager.node.checkNodes(True, e.Node)
+                nodemanager.checkNodes(True, e.Node)
             Else
-                manager.node.checkNodes(False, e.Node)
+                nodemanager.checkNodes(False, e.Node)
             End If
         End If
     End Sub
@@ -173,7 +215,7 @@ Public Class Main
     Sub save()
         Dim result = SaveFile.ShowDialog()
         If result = DialogResult.OK Then
-            manager.node.Save(SaveFile.FileName)
+            nodemanager.Save(SaveFile.FileName)
             unchanges()
         End If
     End Sub
@@ -185,7 +227,7 @@ Public Class Main
         Dim result = OpenSave.ShowDialog()
         If result = DialogResult.OK Then
             MediaTreeView.Nodes.Clear()
-            manager.node.Load(OpenSave.FileName)
+            nodemanager.Load(OpenSave.FileName)
             unchanges()
         End If
     End Sub

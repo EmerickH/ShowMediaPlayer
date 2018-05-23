@@ -43,13 +43,15 @@ Partial Class Main
         Me.PlayButton = New MetroFramework.Controls.MetroButton()
         Me.OptionsPanel = New System.Windows.Forms.FlowLayoutPanel()
         Me.ClearButton = New MetroFramework.Controls.MetroButton()
+        Me.AutoPlayCheck = New MetroFramework.Controls.MetroCheckBox()
         Me.ShowOutputCheck = New MetroFramework.Controls.MetroCheckBox()
         Me.OutputChoice = New System.Windows.Forms.ComboBox()
-        Me.AboutButton = New MetroFramework.Controls.MetroButton()
+        Me.MidiButton = New MetroFramework.Controls.MetroButton()
         Me.MediaNameLabel = New MetroFramework.Controls.MetroLabel()
         Me.SeekTrackBar = New MetroFramework.Controls.MetroTrackBar()
         Me.MediaList = New System.Windows.Forms.ListBox()
         Me.TimeLabel = New MetroFramework.Controls.MetroLabel()
+        Me.AboutButton = New MetroFramework.Controls.MetroButton()
         Me.msmMain = New MetroFramework.Components.MetroStyleManager(Me.components)
         Me.MetroStyleExtender1 = New MetroFramework.Components.MetroStyleExtender(Me.components)
         Me.GeneralTable = New System.Windows.Forms.TableLayoutPanel()
@@ -58,7 +60,6 @@ Partial Class Main
         Me.LoadButton = New MetroFramework.Controls.MetroButton()
         Me.OpenSave = New System.Windows.Forms.OpenFileDialog()
         Me.SaveFile = New System.Windows.Forms.SaveFileDialog()
-        Me.AutoPlayCheck = New MetroFramework.Controls.MetroCheckBox()
         Me.RightTable.SuspendLayout()
         Me.TreeViewOptions.SuspendLayout()
         Me.ContextNode.SuspendLayout()
@@ -251,6 +252,7 @@ Partial Class Main
         Me.OptionsPanel.Controls.Add(Me.AutoPlayCheck)
         Me.OptionsPanel.Controls.Add(Me.ShowOutputCheck)
         Me.OptionsPanel.Controls.Add(Me.OutputChoice)
+        Me.OptionsPanel.Controls.Add(Me.MidiButton)
         Me.OptionsPanel.Dock = System.Windows.Forms.DockStyle.Fill
         Me.OptionsPanel.Location = New System.Drawing.Point(0, 429)
         Me.OptionsPanel.Margin = New System.Windows.Forms.Padding(0)
@@ -266,6 +268,20 @@ Partial Class Main
         Me.ClearButton.TabIndex = 3
         Me.ClearButton.Text = "Clear playlist"
         Me.ClearButton.UseSelectable = True
+        '
+        'AutoPlayCheck
+        '
+        Me.AutoPlayCheck.AutoSize = True
+        Me.AutoPlayCheck.Checked = True
+        Me.AutoPlayCheck.CheckState = System.Windows.Forms.CheckState.Checked
+        Me.AutoPlayCheck.Dock = System.Windows.Forms.DockStyle.Left
+        Me.AutoPlayCheck.Enabled = False
+        Me.AutoPlayCheck.Location = New System.Drawing.Point(84, 3)
+        Me.AutoPlayCheck.Name = "AutoPlayCheck"
+        Me.AutoPlayCheck.Size = New System.Drawing.Size(71, 21)
+        Me.AutoPlayCheck.TabIndex = 6
+        Me.AutoPlayCheck.Text = "Autoplay"
+        Me.AutoPlayCheck.UseSelectable = True
         '
         'ShowOutputCheck
         '
@@ -291,14 +307,14 @@ Partial Class Main
         Me.OutputChoice.Size = New System.Drawing.Size(121, 21)
         Me.OutputChoice.TabIndex = 2
         '
-        'AboutButton
+        'MidiButton
         '
-        Me.AboutButton.Location = New System.Drawing.Point(165, 3)
-        Me.AboutButton.Name = "AboutButton"
-        Me.AboutButton.Size = New System.Drawing.Size(75, 23)
-        Me.AboutButton.TabIndex = 5
-        Me.AboutButton.Text = "About"
-        Me.AboutButton.UseSelectable = True
+        Me.MidiButton.Location = New System.Drawing.Point(385, 3)
+        Me.MidiButton.Name = "MidiButton"
+        Me.MidiButton.Size = New System.Drawing.Size(87, 21)
+        Me.MidiButton.TabIndex = 8
+        Me.MidiButton.Text = "Connect midi"
+        Me.MidiButton.UseSelectable = True
         '
         'MediaNameLabel
         '
@@ -349,7 +365,17 @@ Partial Class Main
         Me.TimeLabel.Name = "TimeLabel"
         Me.TimeLabel.Size = New System.Drawing.Size(191, 50)
         Me.TimeLabel.TabIndex = 9
+        Me.TimeLabel.Text = "-- / --"
         Me.TimeLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'AboutButton
+        '
+        Me.AboutButton.Location = New System.Drawing.Point(165, 3)
+        Me.AboutButton.Name = "AboutButton"
+        Me.AboutButton.Size = New System.Drawing.Size(75, 23)
+        Me.AboutButton.TabIndex = 5
+        Me.AboutButton.Text = "About"
+        Me.AboutButton.UseSelectable = True
         '
         'msmMain
         '
@@ -412,20 +438,6 @@ Partial Class Main
         '
         Me.SaveFile.Title = "Save playlist"
         '
-        'AutoPlayCheck
-        '
-        Me.AutoPlayCheck.AutoSize = True
-        Me.AutoPlayCheck.Checked = True
-        Me.AutoPlayCheck.CheckState = System.Windows.Forms.CheckState.Checked
-        Me.AutoPlayCheck.Dock = System.Windows.Forms.DockStyle.Left
-        Me.AutoPlayCheck.Enabled = False
-        Me.AutoPlayCheck.Location = New System.Drawing.Point(84, 3)
-        Me.AutoPlayCheck.Name = "AutoPlayCheck"
-        Me.AutoPlayCheck.Size = New System.Drawing.Size(71, 21)
-        Me.AutoPlayCheck.TabIndex = 6
-        Me.AutoPlayCheck.Text = "Autoplay"
-        Me.AutoPlayCheck.UseSelectable = True
-        '
         'Main
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
@@ -483,7 +495,6 @@ Partial Class Main
     Friend WithEvents SaveFile As SaveFileDialog
     Friend WithEvents LoadButton As MetroFramework.Controls.MetroButton
     Friend WithEvents MediaList As ListBox
-    Friend WithEvents TimeLabel As MetroFramework.Controls.MetroLabel
     Friend WithEvents ClearButton As MetroFramework.Controls.MetroButton
     Friend WithEvents ToolStripSeparator1 As ToolStripSeparator
     Friend WithEvents AddToPlay As ToolStripButton
@@ -492,4 +503,6 @@ Partial Class Main
     Friend WithEvents AddPauseButton As ToolStripButton
     Friend WithEvents AboutButton As MetroFramework.Controls.MetroButton
     Friend WithEvents AutoPlayCheck As MetroFramework.Controls.MetroCheckBox
+    Friend WithEvents TimeLabel As MetroFramework.Controls.MetroLabel
+    Friend WithEvents MidiButton As MetroFramework.Controls.MetroButton
 End Class

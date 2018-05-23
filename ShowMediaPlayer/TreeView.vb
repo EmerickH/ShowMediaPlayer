@@ -1,5 +1,11 @@
-﻿Imports System.Runtime.CompilerServices
-Imports AxAXVLC
+﻿Imports System.Collections.ObjectModel
+Imports System.ComponentModel
+Imports System.Runtime.CompilerServices
+Imports System.Threading
+Imports Sanford.Multimedia.Midi
+Imports Sanford.Multimedia.Midi.UI
+Imports Vlc.DotNet.Core
+'Imports Midi
 
 Namespace ShowMedia
 
@@ -44,39 +50,26 @@ Namespace ShowMedia
 
     End Module
 
-    Public Class MediaManager
+    Public Class PlaylistManager
         Public urls As String() = {}
         Public tw As TreeView
         Public list As ListBox
-        Public medianame As Object
-        Public WithEvents vlc As AxVLCPlugin2
+        Public WithEvents vlc As Vlc.DotNet.Forms.VlcControl
+        Public form As Form
+        Public WithEvents inputDev As InputDevice
+        Public midichoose As New InputDeviceDialog()
 
-        Public playlist As PlaylistManager
-        Public node As TreenodeManager
+        Delegate Sub EventHandlerDelegate()
 
-        Sub New(ByRef treeview As TreeView, ByRef listbox As ListBox, ByRef label As Object, ByRef axvlc As AxAXVLC.AxVLCPlugin2)
-            tw = treeview
+        Sub New(ByRef treeview As TreeView, ByRef listbox As ListBox, ByRef label As Object, ByRef axvlc As Vlc.DotNet.Forms.VlcControl, ByRef form As Form)
             list = listbox
-            medianame = label
             vlc = axvlc
+            tw = treeview
+            Me.form = form
 
-            playlist = New PlaylistManager(Me)
-            node = New TreenodeManager(Me)
-        End Sub
-
-    End Class
-
-    Public Class PlaylistManager
-        Private parent As MediaManager
-
-        Sub New(ByRef manager As MediaManager)
-            parent = manager
-
-            AddHandler parent.vlc.MediaPlayerTimeChanged, AddressOf VLC_MediaPlayerPositionChanged
-            AddHandler parent.vlc.MediaPlayerPaused, AddressOf VLC_MediaPlayerPaused
-            AddHandler parent.vlc.MediaPlayerPlaying, AddressOf VLC_MediaPlayerPlaying
-            AddHandler parent.vlc.MediaPlayerMediaChanged, AddressOf VLC_MediaPlayerMediaChanged
-            AddHandler parent.vlc.MediaPlayerEndReached, AddressOf VLC_MediaPlayerEndReached
+            AddHandler vlc.VlcMediaPlayer.TimeChanged, AddressOf VLC_MediaPlayerPositionChanged
+            AddHandler vlc.VlcMediaPlayer.Paused, AddressOf VLC_MediaPlayerPlayPause
+            AddHandler vlc.VlcMediaPlayer.Playing, AddressOf VLC_MediaPlayerPlayPause
         End Sub
 
 #Region "       Functions"
@@ -84,11 +77,11 @@ Namespace ShowMedia
         ''' Clear all playlist
         ''' </summary>
         Public Sub Clear()
-            parent.vlc.playlist.stop()
-            parent.vlc.playlist.items.clear()
-            parent.list.Items.Clear()
-            parent.urls = {}
-            parent.medianame.Text = "No media"
+            'parent.vlc.playlist.stop()
+            'parent.vlc.playlist.items.clear()
+            vlc.VlcMediaPlayer.Stop()
+            list.Items.Clear()
+            urls = {}
         End Sub
 
         ''' <summary>
@@ -107,7 +100,7 @@ Namespace ShowMedia
         End Sub
 
         Public Sub AddNodes()
-            For Each child As TreeNode In parent.tw.Nodes
+            For Each child As TreeNode In tw.Nodes
                 AddNodes(child, True)
             Next
         End Sub
@@ -117,63 +110,105 @@ Namespace ShowMedia
         ''' </summary>
         Public Sub Add(name As String, media As TreeNodeMedia)
             If media.Type = MediaType.media Then
-                parent.vlc.playlist.add("file:///" + media.Url, name)
+                urls.Add("file:///" + media.Url)
             Else
-                parent.vlc.playlist.add(media.Url, name)
+                urls.Add(media.Url)
             End If
-            parent.list.Items.Add(name)
-            parent.urls.Add(media.Url)
+            list.Items.Add(name)
+        End Sub
+
+        Public Sub Play(id As Integer)
+            vlc.Play(urls(id), list.Items(id))
         End Sub
 #End Region
 
 #Region "       VLC events"
-        Public Seeking As Integer = 0
 
-        Private Sub VLC_MediaPlayerPositionChanged(sender As Object, e As DVLCEvents_MediaPlayerTimeChangedEvent)
-            If seeking > 0 Then
-                If e.time = seeking Then
-                    seeking = False
-                End If
-            Else
-                Dim lenght As TimeSpan = TimeSpan.FromMilliseconds(sender.input.length)
-                Dim actual As TimeSpan = TimeSpan.FromMilliseconds(e.time)
-                Main.SeekTrackBar.Maximum = lenght.TotalMilliseconds
-                Main.SeekTrackBar.Value = Math.Min(actual.TotalMilliseconds, lenght.TotalMilliseconds)
-                Main.TimeLabel.Text = timetostring(actual) & "/" & timetostring(lenght)
-            End If
+        Dim lenght As TimeSpan
+        Dim actual As TimeSpan
+
+        Private Sub VLC_MediaPlayerPositionChanged(sender As Object, e As VlcMediaPlayerTimeChangedEventArgs)
+            lenght = TimeSpan.FromMilliseconds(vlc.Length)
+            actual = TimeSpan.FromMilliseconds(vlc.Time)
+
+            Dim del As New EventHandlerDelegate(AddressOf TimeEventHandler)
+            form.Invoke(del)
         End Sub
 
-        Function timetostring(time As TimeSpan) As String
-            Return time.Hours.ToString("D2") & ":" & time.Minutes.ToString("D2") & ":" & time.Seconds.ToString("D2")
-        End Function
+        Public Shared Event TimeChanged(ByVal sender As Object, ByVal e As TimeChangedEventArgs)
 
-        Private Sub VLC_MediaPlayerPaused(sender As Object, e As EventArgs)
-            Main.PlayButton.Text = "Play"
+        Public Sub TimeEventHandler()
+            RaiseEvent TimeChanged(Me, New TimeChangedEventArgs(lenght, actual))
         End Sub
 
-        Private Sub VLC_MediaPlayerPlaying(sender As Object, e As EventArgs)
-            Main.PlayButton.Text = "Pause"
+        Private Sub VLC_MediaPlayerPlayPause()
+            Dim del As New EventHandlerDelegate(AddressOf PauseEventHandler)
+            form.Invoke(del)
         End Sub
 
-        Private Sub VLC_MediaPlayerMediaChanged(sender As Object, e As EventArgs)
-            Main.MediaNameLabel.Text = Main.MediaList.Items(sender.playlist.currentItem)
-            Main.MediaList.SelectedIndex = sender.playlist.currentItem
+        Public Shared Event PauseChanged(ByVal sender As Object, ByVal e As Boolean)
+
+        Private Sub PauseEventHandler()
+            RaiseEvent PauseChanged(Me, vlc.State = Interops.Signatures.MediaStates.Playing)
         End Sub
 
-        Private Sub VLC_MediaPlayerEndReached(sender As Object, e As EventArgs)
-            If Not Main.AutoPlayCheck.Checked Then
-                sender.playlist.pause()
-            End If
-        End Sub
 #End Region
 
+#Region "       Midi"
+
+        Public Sub ConnectMidi()
+            If midichoose.ShowDialog() = DialogResult.OK Then
+                Try
+                    If Not IsNothing(inputDev) Then
+                        inputDev.StopRecording()
+                        inputDev.Close()
+                    End If
+                    inputDev = New InputDevice(midichoose.InputDeviceID)
+                    inputDev.StartRecording()
+                    MsgBox("Device connected", MsgBoxStyle.Information)
+                Catch ex As Exception
+                    MsgBox("Error on connecting: " & ex.Message, MsgBoxStyle.Critical)
+                End Try
+            End If
+        End Sub
+
+        Private Sub inputDev_ControlChange(sender As Object, e As ChannelMessageEventArgs) Handles inputDev.ChannelMessageReceived
+            Debug.WriteLine(e.Message.Data1 & ": " & e.Message.Data2)
+            If e.Message.Data2 > 0 Then
+                Select Case e.Message.Data1
+                    Case 0
+                        If vlc.VlcMediaPlayer.State = 3 Then
+                            vlc.Pause()
+                        Else
+                            vlc.Play()
+                        End If
+                    Case 1
+                        vlc.Time = (e.Message.Data2 - 1) / 126 * vlc.Length
+                    Case 2
+                        list.SelectedIndex = Math.Min(list.SelectedIndex + 1, list.Items.Count)
+                    Case 3
+                        list.SelectedIndex = Math.Max(list.SelectedIndex - 1, 0)
+                End Select
+            End If
+        End Sub
+    End Class
+
+#End Region
+
+    Public Class TimeChangedEventArgs
+        Public lenght As TimeSpan
+        Public actual As TimeSpan
+        Sub New(lgt As TimeSpan, time As TimeSpan)
+            lenght = lgt
+            actual = time
+        End Sub
     End Class
 
     Public Class TreenodeManager
-        Private parent As MediaManager
+        Public tw As TreeView
 
-        Sub New(ByRef manager As MediaManager)
-            parent = manager
+        Sub New(ByRef treeview As TreeView)
+            tw = treeview
         End Sub
 
         Private toremove As New List(Of TreeNode)
@@ -191,7 +226,7 @@ Namespace ShowMedia
         End Sub
 
         Public Sub Remove()
-            For Each child As TreeNode In parent.tw.Nodes
+            For Each child As TreeNode In tw.Nodes
                 Remove(child, True)
             Next
             For Each del In toremove
@@ -219,7 +254,7 @@ Namespace ShowMedia
         ''' </summary>
         Sub Save(ByVal filePath As String)
             Dim tmp As New List(Of TreeNode)
-            For Each n As TreeNode In parent.tw.Nodes
+            For Each n As TreeNode In tw.Nodes
                 Dim tninfo As New TreeNode
                 tninfo = n
                 tmp.Add(tninfo)
@@ -240,7 +275,7 @@ Namespace ShowMedia
                 tmp = CType(bf.Deserialize(fs), List(Of TreeNode))
             End Using
             For Each n As TreeNode In tmp
-                parent.tw.Nodes.Add(n)
+                tw.Nodes.Add(n)
             Next
         End Sub
     End Class

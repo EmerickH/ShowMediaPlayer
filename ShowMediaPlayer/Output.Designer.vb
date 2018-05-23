@@ -20,22 +20,25 @@ Partial Class Output
     'REMARQUE : la procédure suivante est requise par le Concepteur Windows Form
     'Elle peut être modifiée à l'aide du Concepteur Windows Form.  
     'Ne la modifiez pas à l'aide de l'éditeur de code.
-    <System.Diagnostics.DebuggerStepThrough()> _
+    <System.Diagnostics.DebuggerStepThrough()>
     Private Sub InitializeComponent()
         Dim resources As System.ComponentModel.ComponentResourceManager = New System.ComponentModel.ComponentResourceManager(GetType(Output))
-        Me.VLC = New AxAXVLC.AxVLCPlugin2()
+        Me.VLC = New Vlc.DotNet.Forms.VlcControl()
         CType(Me.VLC, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.SuspendLayout()
         '
         'VLC
         '
+        Me.VLC.BackColor = System.Drawing.Color.Black
         Me.VLC.Dock = System.Windows.Forms.DockStyle.Fill
-        Me.VLC.Enabled = True
         Me.VLC.Location = New System.Drawing.Point(0, 0)
         Me.VLC.Name = "VLC"
-        Me.VLC.OcxState = CType(resources.GetObject("VLC.OcxState"), System.Windows.Forms.AxHost.State)
         Me.VLC.Size = New System.Drawing.Size(284, 261)
-        Me.VLC.TabIndex = 1
+        Me.VLC.Spu = -1
+        Me.VLC.TabIndex = 0
+        Me.VLC.Text = "VLC"
+        Me.VLC.VlcLibDirectory = CType(resources.GetObject("VLC.VlcLibDirectory"), System.IO.DirectoryInfo)
+        Me.VLC.VlcMediaplayerOptions = Nothing
         '
         'Output
         '
@@ -55,5 +58,5 @@ Partial Class Output
 
     End Sub
 
-    Friend WithEvents VLC As AxAXVLC.AxVLCPlugin2
+    Friend WithEvents VLC As Vlc.DotNet.Forms.VlcControl
 End Class
